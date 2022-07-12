@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.zerock.mapper.BoardMapper">
+
+<!-- sql 조각 include해서 사용-->
+<sql id="criteria">
+	<trim prefix="(" suffix=") AND">
+		<foreach collection="typeArr" item="type" separator="OR">
+			<if test="type == 'T'.toString()">
+				title like '%'||#{keyword}||'%'
+			</if>
+			<if test="type == 'C'.toString()">
+				content like '%'||#{keyword}||'%'
+			</if>
+			<if test="type == 'W'.toString()">
+				writer like '%'||#{keyword}||'%'
+			</if>
+		</foreach>
+	</trim>
+</sql>
+
+	<select id="getList" resultType="org.zerock.domain.BoardVO">
+		select * from tbl_board order by bno desc
+	</select>
+	
+	<insert id="insert">
+		insert into tbl_board (bno, title, content, writer)
+		values (seq_board.nextval, #{title}, #{content}, #{writer})
+	</insert>
+	
+	<insert id="insertSelectKey">
+		<!-- order 언제 실행할꺼야? 아래꺼보다 먼저 before -->
+		<!-- keyProperty 결과를 어떻게 세팅할거야? bno에 세티할거야-->
+		<!-- resultType 결과데이터 타입뭐야? bno는 long타입이야 -->
+		<selectKey order="BEFORE" keyProperty="bno" resultType="long">
+			select seq_board.nextval from dual
+		</selectKey>
+		insert into tbl_board (bno, title, content, writer)
+		values (#{bno}, #{title}, #{content}, #{writer})	
+	</insert>
+	
+	<select id="read" resultType="org.zerock.domain.BoardVO">
+		select * from tbl_board where bno = #{bno}
+	</select>
+	
+	<delete id="delete">
+		delete from tbl_board where bno = #{bno}
+	</delete>
+	
+	<update id="update">
+		update tbl_board
+		set title = #{title},
+			content = #{content},
+			writer = #{writer},
+			updatedate = sysdate
+		where bno= #{bno}
+	</update>
+	
+	<select id="getListWithPaging" resultType="org.zerock.domain.BoardVO">
+		<![CDATA[
+			select * from(
+			
+			select /*+ INDEX_DESC(tbl_board pk_board) */ rownum rn, bno, title, writer, regdate, updatedate 
+			from tbl_board 
+			where 
+		]]>
+		
+		<include refid="criteria"></include>
+		
+		<![CDATA[
+			bno > 0 and rownum > 0 and rownum <=(#{pageNum} * #{amount})
+			)
+			where rn > (#{pageNum}-1) * #{amount}
+		]]>
+		<!-- #{pageNum} = getPageNum , Class Criteria -->
+	</select>
+	
+	<select id="getTotalCount" resultType="int">
+		select count(bno) from tbl_board where 
+		<include refid="criteria"></include>
+		bno > 0
+	</select>
+	
+	<select id="searchTest" resultType="org.zerock.domain.BoardVO">
+		<![CDATA[
+			select * from tbl_board
+			where
+		]]>
+		
+		
+<!-- 		<trim suffix="and">
+			<foreach collection="map" index="key" item="val" separator="OR" open="(" close=")">
+				<if test="key == 'T'.toString()">
+					title like #{val}
+				</if>
+				<if test="key == 'C'.toString()">
+					content like #{val}
+				</if>
+				<if test="key == 'W'.toString()">
+					writer like #{val}
+				</if>
+				
+			</foreach>
+		</trim>	 -->
+		<![CDATA[
+			rownum < 10
+		]]>
+	</select>
+</mapper>
